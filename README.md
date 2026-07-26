@@ -1,6 +1,7 @@
 # 📅 Jubilee Calendar
 
 > A reformed calendar system with 13 equal months, a dedicated intercalary month, and year-cycle rules anchored to Year 0.
+<img width="720" height="720" alt="image" src="https://github.com/user-attachments/assets/390156d7-f5aa-4183-94b1-e2ddb84b2594" />
 
 ---
 
@@ -159,6 +160,8 @@ Click the title label to zoom out one level. Click **Now** to return to the curr
 ---
 
 ## Epoch Converter
+
+<img width="720" height="720" alt="image" src="https://github.com/user-attachments/assets/7de6f924-c341-4aae-89b6-d299dc46ae47" />
 
 The calendar includes a built-in holiday set. Any date originally falling on day 29, 30, or 31 of a Gregorian month is moved forward to the following month.
 `jubilee-converter.html` translates dates between the Gregorian and Jubilee systems in both directions.
