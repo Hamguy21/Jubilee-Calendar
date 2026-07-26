@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jubilee Epoch Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --void: #050608;
+  --deep: #0c0e14;
+  --surface: #111420;
+  --rim: #1e2236;
+  --mist: rgba(255,255,255,0.06);
+  --fog: rgba(255,255,255,0.03);
+  --ink: #e8e4dc;
+  --dim: #7a7a8c;
+  --gold: #c9a84c;
+  --gold-glow: rgba(201,168,76,0.25);
+  --gold-soft: rgba(201,168,76,0.1);
+  --ember: #e05a3a;
+  --ember-glow: rgba(224,90,58,0.3);
+  --ice: #6ec6e6;
+  --ice-glow: rgba(110,198,230,0.25);
+  --jubilee: #b06fe3;
+  --jubilee-glow: rgba(176,111,227,0.3);
+  --serif: 'Cinzel', serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+html, body {
+  min-height: 100vh;
+  background: var(--void);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  color: var(--ink);
+  padding: 2rem 1rem;
+}
+
+#stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+.page {
+  position: relative;
+  z-index: 1;
+  width: min(96vw, 740px);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.page-header {
+  text-align: center;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(201,168,76,0.15);
+}
+.page-eyebrow {
+  font-size: 0.6rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.7;
+  margin-bottom: 0.5rem;
+}
+.page-title {
+  font-family: var(--serif);
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.page-sub {
+  margin-top: 0.5rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  line-height: 1.7;
+}
+.page-sub .epoch-note { color: var(--ice); opacity: 0.8; }
+
+.panel {
+  background: linear-gradient(160deg, #13162080 0%, #0b0d1480 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  backdrop-filter: blur(24px);
+  position: relative;
+  padding: 2rem;
+}
+.panel::before { content:''; position:absolute; top:8px; left:8px; width:16px; height:16px; border-top:1px solid var(--gold); border-left:1px solid var(--gold); opacity:0.4; }
+.panel::after  { content:''; position:absolute; bottom:8px; right:8px; width:16px; height:16px; border-bottom:1px solid var(--gold); border-right:1px solid var(--gold); opacity:0.4; }
+
+.panel-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.75;
+  margin-bottom: 1.4rem;
+}
+
+.direction-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.dir-label {
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  opacity: 0.5;
+  transition: opacity 0.2s, color 0.2s;
+}
+.dir-label.active { opacity: 1; color: var(--gold); }
+
+.toggle-track {
+  width: 52px; height: 26px;
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 13px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle-track.flipped { background: rgba(176,111,227,0.15); border-color: rgba(176,111,227,0.3); }
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), background 0.2s;
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+.toggle-track.flipped .toggle-thumb {
+  transform: translateX(26px);
+  background: var(--jubilee);
+  box-shadow: 0 0 8px var(--jubilee-glow);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.field { display: flex; flex-direction: column; gap: 0.4rem; }
+.field label {
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.field input, .field select {
+  background: var(--fog);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  outline: none;
+  border-radius: 1px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  -moz-appearance: textfield;
+}
+.field input::-webkit-outer-spin-button,
+.field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.field input:focus, .field select:focus {
+  border-color: rgba(201,168,76,0.5);
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+.field .hint {
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  opacity: 0.55;
+}
+.field select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a7a8c'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+}
+.field select option { background: #111420; }
+
+.btn-row {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.convert-btn {
+  background: none;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 0.7rem 2.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.convert-btn::before { content:''; position:absolute; inset:0; background:var(--gold); opacity:0; transition:opacity 0.2s; }
+.convert-btn:hover { box-shadow: 0 0 20px var(--gold-glow); }
+.convert-btn:hover::before { opacity: 0.07; }
+.convert-btn:active { transform: scale(0.98); }
+
+.math-toggle {
+  background: none;
+  border: 1px solid rgba(110,198,230,0.3);
+  color: var(--ice);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.2rem;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+.math-toggle:hover { opacity: 1; box-shadow: 0 0 12px var(--ice-glow); }
+.math-toggle.on { opacity: 1; background: rgba(110,198,230,0.06); border-color: var(--ice); }
+
+.btn-calendar-link {
+  background: none;
+  border: 1px solid rgba(201,168,76,0.3);
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.2rem;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.btn-calendar-link:hover {
+  opacity: 1;
+  border-color: var(--gold);
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+
+.result {
+  background: var(--fog);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 1.5rem 2rem;
+  min-height: 6rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.8rem;
+}
+.result.has-result { border-color: rgba(201,168,76,0.2); }
+.result.error-state { border-color: rgba(224,90,58,0.3); }
+
+.result-eyebrow {
+  font-size: 0.55rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.result-main {
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  letter-spacing: 0.05em;
+  color: var(--gold);
+  line-height: 1.2;
+}
+.result-main.jubilee-result { color: var(--jubilee); }
+.result-main.error-text {
+  color: var(--ember);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+.result-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  line-height: 1.6;
+}
+.result-detail span { color: var(--ink); opacity: 0.75; }
+.result-detail .warn { color: var(--ember); opacity: 0.9; }
+.result-detail .good { color: var(--ice); opacity: 0.9; }
+.result-placeholder {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  opacity: 0.4;
+  text-align: center;
+  width: 100%;
+}
+
+/* Math panel */
+.math-panel {
+  background: var(--fog);
+  border: 1px solid rgba(110,198,230,0.12);
+  padding: 1.5rem 2rem;
+  display: none;
+}
+.math-panel.visible { display: block; }
+.math-title {
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ice);
+  opacity: 0.7;
+  margin-bottom: 1.2rem;
+}
+.math-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 2rem;
+}
+.math-cell { font-size: 0.62rem; letter-spacing: 0.06em; color: var(--dim); line-height: 1.8; }
+.math-cell .val { display: block; color: var(--ice); font-size: 0.82rem; margin-top: 0.1rem; }
+.math-divider { height: 1px; background: rgba(255,255,255,0.05); margin: 1rem 0; }
+.math-steps { font-size: 0.62rem; letter-spacing: 0.05em; color: var(--dim); line-height: 2; }
+.math-steps code {
+  color: var(--ice);
+  background: rgba(110,198,230,0.07);
+  padding: 0.1rem 0.45rem;
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+.epoch-note-box {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  background: rgba(201,168,76,0.04);
+  border: 1px solid rgba(201,168,76,0.12);
+  font-size: 0.61rem;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  line-height: 1.9;
+}
+.epoch-note-box code { color: var(--gold); background: rgba(201,168,76,0.07); padding: 0.1rem 0.4rem; border-radius: 2px; font-family: var(--mono); }
+.epoch-note-box strong { color: var(--gold); letter-spacing: 0.12em; font-size: 0.58rem; }
+
+/* Reference */
+.ref-panel { background: var(--fog); border: 1px solid rgba(255,255,255,0.05); padding: 1.5rem 2rem; }
+.ref-title { font-size: 0.58rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); margin-bottom: 1rem; }
+.ref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.5rem 1.5rem; }
+.ref-row { display: flex; justify-content: space-between; font-size: 0.65rem; letter-spacing: 0.05em; color: var(--dim); border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.3rem; }
+.ref-row span:last-child { color: var(--ink); opacity: 0.6; }
+.ref-row.jubilee-ref span:last-child { color: var(--jubilee); opacity: 0.8; }
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.animate-in { animation: fadeUp 0.3s ease both; }
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+
+<div class="page">
+  <header class="page-header">
+    <p class="page-eyebrow">Reformed Calendar System</p>
+    <h1 class="page-title">Epoch Converter</h1>
+    <p class="page-sub">
+      Translate dates between Gregorian and Jubilee systems via exact day-offset arithmetic.<br>
+      <span class="epoch-note">Epoch anchor: Jubilee Day 0 = Gregorian January 1, 2000 CE · BC years supported (use negative astronomical years)</span>
+    </p>
+    <div style="margin-top:1.2rem;">
+      <a href="jubilee-calendar.html" class="btn-calendar-link">⇄ Calendar</a>
+    </div>
+  </header>
+
+  <div class="panel">
+    <p class="panel-label">Conversion Direction</p>
+    <div class="direction-row">
+      <span class="dir-label active" id="labelGreg">Gregorian</span>
+      <div class="toggle-track" id="toggleTrack" onclick="flipDirection()">
+        <div class="toggle-thumb"></div>
+      </div>
+      <span class="dir-label" id="labelJub">Jubilee</span>
+    </div>
+    <p style="text-align:center;font-size:0.58rem;letter-spacing:0.12em;color:var(--dim);margin-top:0.4rem;" id="dirHint">Gregorian → Jubilee</p>
+    <div class="fields" id="inputFields"></div>
+    <div class="btn-row">
+      <button class="convert-btn" onclick="convert()">Convert</button>
+      <button class="math-toggle" id="mathToggle" onclick="toggleMath()">Show Math</button>
+    </div>
+  </div>
+
+  <div class="result" id="resultBox">
+    <p class="result-placeholder">Enter a date above and press Convert</p>
+  </div>
+
+  <div class="math-panel" id="mathPanel">
+    <p class="math-title">Conversion Workings</p>
+    <div class="math-grid" id="mathGrid"></div>
+    <div class="math-divider"></div>
+    <div class="math-steps" id="mathSteps"></div>
+    <div class="epoch-note-box" id="epochNoteBox"></div>
+  </div>
+
+  <div class="ref-panel">
+    <p class="ref-title">Quick Reference — Month Index</p>
+    <div class="ref-grid" id="refGrid"></div>
+  </div>
+</div>
+
+<script>
+/* ── Starfield ── */
+(function(){
+  const c=document.getElementById('stars'),ctx=c.getContext('2d');
+  let W,H,stars=[];
+  let lastTick = 0;
+  const STRIP_HEIGHT = 1 / 5;
+  const STRIP_OVERLAP = 0.17;
+  const STRIPS = [
+    {
+      count: 42,
+      layers: [
+        { share: 0.28, drift: 0.000005, sway: 0.000006, swayAmp: 0.004, twinkle: 0.004, pulse: 0.55, size: 0.82 },
+        { share: 0.34, drift: 0.00001, sway: 0.00001, swayAmp: 0.008, twinkle: 0.0065, pulse: 0.68, size: 1 },
+        { share: 0.38, drift: 0.000017, sway: 0.000014, swayAmp: 0.012, twinkle: 0.009, pulse: 0.82, size: 1.18 }
+      ]
+    },
+    {
+      count: 48,
+      layers: [
+        { share: 0.28, drift: -0.000007, sway: 0.000007, swayAmp: 0.004, twinkle: 0.0045, pulse: 0.58, size: 0.84 },
+        { share: 0.34, drift: -0.000013, sway: 0.000011, swayAmp: 0.008, twinkle: 0.0068, pulse: 0.72, size: 1 },
+        { share: 0.38, drift: -0.00002, sway: 0.000015, swayAmp: 0.012, twinkle: 0.0095, pulse: 0.86, size: 1.18 }
+      ]
+    },
+    {
+      count: 56,
+      layers: [
+        { share: 0.28, drift: 0.000009, sway: 0.000008, swayAmp: 0.004, twinkle: 0.0048, pulse: 0.6, size: 0.86 },
+        { share: 0.34, drift: 0.000016, sway: 0.000012, swayAmp: 0.008, twinkle: 0.0072, pulse: 0.76, size: 1.02 },
+        { share: 0.38, drift: 0.000025, sway: 0.000017, swayAmp: 0.012, twinkle: 0.0102, pulse: 0.9, size: 1.2 }
+      ]
+    },
+    {
+      count: 42,
+      layers: [
+        { share: 0.28, drift: -0.000006, sway: 0.000006, swayAmp: 0.004, twinkle: 0.0043, pulse: 0.57, size: 0.84 },
+        { share: 0.34, drift: -0.000011, sway: 0.00001, swayAmp: 0.008, twinkle: 0.0066, pulse: 0.7, size: 1 },
+        { share: 0.38, drift: -0.000017, sway: 0.000014, swayAmp: 0.012, twinkle: 0.0091, pulse: 0.84, size: 1.18 }
+      ]
+    },
+    {
+      count: 32,
+      layers: [
+        { share: 0.28, drift: 0.000004, sway: 0.000005, swayAmp: 0.004, twinkle: 0.0038, pulse: 0.5, size: 0.8 },
+        { share: 0.34, drift: 0.000008, sway: 0.000008, swayAmp: 0.008, twinkle: 0.0058, pulse: 0.62, size: 0.96 },
+        { share: 0.38, drift: 0.000013, sway: 0.000012, swayAmp: 0.012, twinkle: 0.0084, pulse: 0.76, size: 1.12 }
+      ]
+    }
+  ];
+  function resize(){ W=c.width=innerWidth; H=c.height=innerHeight; }
+  window.addEventListener('resize',resize); resize();
+  STRIPS.forEach((strip, index) => {
+    const centerY = (index + 0.5) * STRIP_HEIGHT;
+    let assigned = 0;
+    strip.layers.forEach((layer, layerIndex) => {
+      const remaining = strip.count - assigned;
+      const target = layerIndex === strip.layers.length - 1 ? remaining : Math.round(strip.count * layer.share);
+      assigned += target;
+      for(let i = 0; i < target; i++){
+        const spreadY = (Math.random() + Math.random() - 1) * STRIP_OVERLAP;
+        stars.push({
+          x: Math.random(),
+          y: centerY + spreadY,
+          r: (Math.random() * 0.75 + 0.22 + index * 0.03) * layer.size,
+          baseA: Math.random() * 0.2 + 0.08,
+          amp: (Math.random() * 0.18 + 0.05) * layer.pulse,
+          speed: Math.random() * layer.twinkle + layer.twinkle,
+          phase: Math.random() * Math.PI * 2,
+          strip: index,
+          layer: layerIndex,
+          offset: Math.random() * Math.PI * 2,
+          yAmp: 0.002 + Math.random() * 0.006 + layerIndex * 0.0015,
+          ySpeed: 0.00012 + Math.random() * 0.00014,
+          yPhase: Math.random() * Math.PI * 2
+        });
+      }
+    });
+  });
+  function draw(now = 0){
+    const delta = now - lastTick;
+    if(delta < 33){
+      requestAnimationFrame(draw);
+      return;
+    }
+    const step = lastTick ? delta / 16.67 : 1;
+    lastTick = now;
+    ctx.clearRect(0,0,W,H);
+    const layerOffsets = STRIPS.map(strip => strip.layers.map(layer => ({
+      x: now * layer.drift + Math.sin(now * layer.sway) * layer.swayAmp,
+      alpha: layer.pulse,
+      radius: layer.size
+    })));
+    stars.forEach(s=>{
+      const layer = layerOffsets[s.strip][s.layer];
+      s.phase += s.speed * step;
+      const x = (s.x + layer.x + Math.sin(now * 0.0007 + s.offset) * 0.003 + 1.5) % 1;
+      const y = s.y + Math.sin(now * s.ySpeed + s.yPhase) * s.yAmp;
+      const twinkle = (Math.sin(s.phase) + 1) / 2;
+      const alpha = Math.min(0.78, s.baseA + twinkle * s.amp * layer.alpha);
+      const radius = s.r + twinkle * 0.14 * layer.radius;
+      const glowRadius = radius * 2.8;
+      const glowAlpha = alpha * 0.18;
+      ctx.beginPath();
+      ctx.arc(x*W, y*H, glowRadius, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(201,168,76,${glowAlpha})`;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x*W,y*H,radius,0,Math.PI*2);
+      ctx.fillStyle = `rgba(235,225,255,${alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ═══════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════ */
+const JMONTHS       = ["January","February","March","April","May","June","Sol","July","August","September","October","November","December","Jubilee"];
+const JMONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Sol","Jul","Aug","Sep","Oct","Nov","Dec","Jubilee"];
+const GMONTHS       = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+const EPOCH_YEAR = 2000; // Both systems share year 2000 as anchor
+
+/* ═══════════════════════════════════════════════
+   YEAR RULES
+   BC support: uses astronomical year numbering.
+   1 BC = year 0, 2 BC = year -1, etc.
+═══════════════════════════════════════════════ */
+function isGregLeap(y){
+  // Proleptic Gregorian, handles negative (BC) years
+  return (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+}
+const isJubileeYear  = y => y % 28 === 0;
+const isResetSkipped = y => y % 128 === 0;
+
+function gregMonthDays(y){ const f=isGregLeap(y)?29:28; return [31,f,31,30,31,30,31,31,30,31,30,31]; }
+function gregYearDays(y){ return isGregLeap(y)?366:365; }
+function jubYearDays(y){ let d=364; if(!isResetSkipped(y)) d++; if(isJubileeYear(y)) d+=7; return d; }
+function floorDiv(n, d){ return Math.floor(n / d); }
+function countMultiplesInRange(start, end, divisor){
+  if(end <= start) return 0;
+  return floorDiv(end - 1, divisor) - floorDiv(start - 1, divisor);
+}
+function findYearForAbsolute(abs, daysToYearStart, minYearDays, maxYearDays){
+  let low, high;
+
+  if(abs >= 0){
+    low = EPOCH_YEAR + floorDiv(abs, maxYearDays);
+    high = EPOCH_YEAR + floorDiv(abs, minYearDays) + 1;
+  } else {
+    const magnitude = -abs;
+    low = EPOCH_YEAR - (floorDiv(magnitude - 1, minYearDays) + 1);
+    high = EPOCH_YEAR - floorDiv(magnitude - 1, maxYearDays);
+  }
+
+  while(low + 1 < high){
+    const mid = floorDiv(low + high, 2);
+    if(daysToYearStart(mid) <= abs) low = mid;
+    else high = mid;
+  }
+
+  return low;
+}
+
+/* ═══════════════════════════════════════════════
+   EPOCH-BASED ABSOLUTE DAY ARITHMETIC
+   
+   All conversions go through an absolute day offset
+   from the shared epoch (Jan 1, 2000 = Day 0).
+   This handles multi-year transitions and BC years
+   exactly, with no proportional approximation.
+═══════════════════════════════════════════════ */
+
+// Total days from epoch year-start to start of year y (can be negative for BC).
+// This counts leap years directly across the half-open interval between the
+// epoch year and y, so astronomical year 0 and negative years stay exact.
+function gregDaysToYearStart(y){
+  if(y === EPOCH_YEAR) return 0;
+
+  const start = Math.min(EPOCH_YEAR, y);
+  const end = Math.max(EPOCH_YEAR, y);
+  const span = end - start;
+  const leapYears = countMultiplesInRange(start, end, 4)
+    - countMultiplesInRange(start, end, 100)
+    + countMultiplesInRange(start, end, 400);
+  const total = span * 365 + leapYears;
+
+  return y > EPOCH_YEAR ? total : -total;
+}
+
+// DOY within Gregorian year (1-based)
+function gregDOY(y, m0, d){
+  const md = gregMonthDays(y);
+  let doy = d;
+  for(let i=0;i<m0;i++) doy += md[i];
+  return doy;
+}
+
+// Gregorian date → absolute day offset
+function gregToAbsolute(y, m0, d){
+  return gregDaysToYearStart(y) + gregDOY(y, m0, d) - 1;
+}
+
+// Absolute day → Gregorian date.
+// Resolve the year by exact binary search over year starts; no floating-point
+// estimate is needed, and the search stays bounded for arbitrarily large dates.
+function absoluteToGreg(abs){
+  const y = findYearForAbsolute(abs, gregDaysToYearStart, 365, 366);
+  const doy = abs - gregDaysToYearStart(y) + 1;
+  const md = gregMonthDays(y);
+  let rem = doy;
+  for(let m=0;m<12;m++){
+    if(rem <= md[m]) return {year:y, month0:m, day:rem};
+    rem -= md[m];
+  }
+  return {year:y, month0:11, day:31};
+}
+
+// Cumulative Jubilee days from epoch year-start to start of year y.
+// Exact O(1) form: each year contributes 365 days, plus 7 for Jubilee years,
+// minus 1 for 128-year Reset skips.
+function jubDaysToYearStart(y){
+  if(y === EPOCH_YEAR) return 0;
+
+  const start = Math.min(EPOCH_YEAR, y);
+  const end = Math.max(EPOCH_YEAR, y);
+  const span = end - start;
+  const jubileeYears = countMultiplesInRange(start, end, 28);
+  const resetSkipYears = countMultiplesInRange(start, end, 128);
+  const total = span * 365 + jubileeYears * 7 - resetSkipYears;
+
+  return y > EPOCH_YEAR ? total : -total;
+}
+
+// DOY within Jubilee year (1-based)
+function jubDOY(y, m0, d){
+  if(m0 === 13) return (isResetSkipped(y) ? 364 : 365) + d;
+  if(m0 === 12 && d === 29) return 365;
+  return m0 * 28 + d;
+}
+
+// Jubilee date → absolute day offset
+function jubToAbsolute(y, m0, d){
+  return jubDaysToYearStart(y) + jubDOY(y, m0, d) - 1;
+}
+
+// Absolute day → Jubilee date.
+// Jubilee years vary from 364 to 372 days, so we use the same exact bounded
+// search over year starts before resolving the day-of-year.
+function absoluteToJub(abs){
+  const y = findYearForAbsolute(abs, jubDaysToYearStart, 364, 372);
+  const doy = abs - jubDaysToYearStart(y) + 1;
+  return doyToJub(y, doy);
+}
+
+function doyToJub(y, doy){
+  if(doy <= 364){
+    const m0 = Math.floor((doy-1)/28);
+    const d  = doy - m0*28;
+    return {year:y, month0:m0, day:d, isReset:false, isJubMonth:false};
+  }
+  if(doy === 365 && !isResetSkipped(y)){
+    return {year:y, month0:12, day:29, isReset:true, isJubMonth:false};
+  }
+  const jubStart = isResetSkipped(y) ? 365 : 366;
+  return {year:y, month0:13, day:doy - jubStart + 1, isReset:false, isJubMonth:true};
+}
+
+/* ═══════════════════════════════════════════════
+   VALIDATION — specific, context-aware messages
+═══════════════════════════════════════════════ */
+function validateGreg(y, m0, d){
+  if(isNaN(y)||isNaN(m0)||isNaN(d)) return 'Please fill in all fields.';
+  const md = gregMonthDays(y);
+  if(d < 1) return `Day must be at least 1.`;
+  if(m0 === 1 && d === 29 && !isGregLeap(y))
+    return `February 29 does not exist in ${fy(y)} — ${fy(y)} is not a Gregorian leap year. The next leap year is ${nextGregLeap(y)}.`;
+  if(d > md[m0])
+    return `Day ${d} is out of range — ${GMONTHS[m0]} ${fy(y)} has only ${md[m0]} days.`;
+  return null;
+}
+
+function validateJub(y, m0, d){
+  if(isNaN(y)||isNaN(m0)||isNaN(d)) return 'Please fill in all fields.';
+  if(d < 1) return `Day must be at least 1.`;
+  if(m0 === 13){
+    if(!isJubileeYear(y))
+      return `The Jubilee month does not exist in ${fy(y)} — ${fy(y)} is not a Jubilee year (year must be divisible by 28). The next Jubilee year is ${nextJubilee(y)}.`;
+    if(d > 7)
+      return `Day ${d} is out of range — the Jubilee month has exactly 7 days (1–7).`;
+  } else if(m0 === 12 && d === 29){
+    if(isResetSkipped(y))
+      return `Reset Day (December 29) does not exist in ${fy(y)} — this is a 128-year skip year. Reset Day resumes in ${fy(y + 1)}.`;
+  } else if(d > 28){
+    const hint = (m0 === 12) ? ` Day 29 in December is only valid as Reset Day, which exists when the year is not divisible by 128.` : '';
+    return `Day ${d} is out of range — all standard Jubilee months have exactly 28 days (1–28).${hint}`;
+  }
+  return null;
+}
+
+function nextGregLeap(y){ let n=y+1; while(!isGregLeap(n)) n++; return fy(n); }
+function nextJubilee(y) { let n=y+1; while(!isJubileeYear(n)) n++; return fy(n); }
+
+/* ── Year display (CE / BC) ── */
+function fy(y){
+  if(y >= 1) return `${y} CE`;
+  if(y === 0) return `1 BC`;
+  return `${1 - y} BC`;
+}
+
+function ord(n){ const s=['th','st','nd','rd']; const v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+
+/* ═══════════════════════════════════════════════
+   UI STATE
+═══════════════════════════════════════════════ */
+let toJubilee = true;
+let mathVisible = false;
+let lastMath = null;
+
+function flipDirection(){
+  toJubilee = !toJubilee;
+  document.getElementById('toggleTrack').classList.toggle('flipped', !toJubilee);
+  document.getElementById('labelGreg').classList.toggle('active',  toJubilee);
+  document.getElementById('labelJub').classList.toggle('active',  !toJubilee);
+  document.getElementById('dirHint').textContent = toJubilee ? 'Gregorian → Jubilee' : 'Jubilee → Gregorian';
+  buildFields();
+  clearResult();
+}
+
+function toggleMath(){
+  mathVisible = !mathVisible;
+  const btn = document.getElementById('mathToggle');
+  btn.classList.toggle('on', mathVisible);
+  btn.textContent = mathVisible ? 'Hide Math' : 'Show Math';
+  document.getElementById('mathPanel').classList.toggle('visible', mathVisible);
+  if(mathVisible && lastMath) renderMath(lastMath);
+}
+
+/* ── Fields ── */
+function buildFields(){
+  const c = document.getElementById('inputFields');
+  c.innerHTML = '';
+  c.style.gridTemplateColumns = '1fr 1fr 1fr';
+
+  if(toJubilee){
+    c.appendChild(mkField('YEAR','greg-year','e.g. 2025 or −43','Negative = BC (astronomical year)'));
+    c.appendChild(mkSelect('MONTH','greg-month', GMONTHS.map((n,i)=>({v:i,l:n}))));
+    c.appendChild(mkField('DAY','greg-day','1 – 31'));
+  } else {
+    c.appendChild(mkField('YEAR','jub-year','e.g. 2025 or −43','Negative = BC (astronomical year)'));
+    c.appendChild(mkSelect('MONTH','jub-month', JMONTHS.map((n,i)=>({v:i,l:n}))));
+    c.appendChild(mkField('DAY','jub-day','1 – 28'));
+  }
+}
+function mkField(label, id, placeholder, hint){
+  const w = document.createElement('div'); w.className='field';
+  w.innerHTML = `<label>${label}</label><input type="number" id="${id}" placeholder="${placeholder}">` +
+    (hint ? `<span class="hint">${hint}</span>` : '');
+  return w;
+}
+function mkSelect(label, id, opts){
+  const w = document.createElement('div'); w.className='field';
+  w.innerHTML = `<label>${label}</label><select id="${id}">${opts.map(o=>`<option value="${o.v}">${o.l}</option>`).join('')}</select>`;
+  return w;
+}
+
+/* ═══════════════════════════════════════════════
+   CONVERT
+═══════════════════════════════════════════════ */
+function convert(){
+  if(toJubilee){
+    const y  = parseInt(document.getElementById('greg-year').value);
+    const m0 = parseInt(document.getElementById('greg-month').value);
+    const d  = parseInt(document.getElementById('greg-day').value);
+    const err = validateGreg(y, m0, d);
+    if(err) return showError(err);
+
+    const abs   = gregToAbsolute(y, m0, d);
+    const jDate = absoluteToJub(abs);
+    const gDOY  = gregDOY(y, m0, d);
+    const jDOY  = jubDOY(jDate.year, jDate.month0, jDate.day);
+
+    lastMath = {
+      dir: 'g2j', abs,
+      inDOY: gDOY,  inTotal: gregYearDays(y),      inYear: y,
+      outDOY: jDOY, outTotal: jubYearDays(jDate.year), outYear: jDate.year,
+      inLabel:  `${GMONTHS[m0]} ${d}, ${fy(y)}`,
+      outLabel: jDate.isReset ? `Reset Day, ${fy(jDate.year)}`
+                              : `${JMONTHS[jDate.month0]} ${jDate.day}, ${fy(jDate.year)}`
+    };
+
+    let mainClass = '', mainText = '';
+    const lines = [];
+
+    if(jDate.isReset){
+      mainText = `${fy(jDate.year)}  ·  Reset Day`;
+      lines.push(`<span>World Reset Day</span> — outside the week cycle, New Year marker`);
+    } else if(jDate.isJubMonth){
+      mainClass = 'jubilee-result';
+      mainText  = `Jubilee  ${jDate.day},  ${fy(jDate.year)}`;
+      lines.push(`<span>Jubilee Month</span> — only present in years divisible by 28`);
+    } else {
+      mainText = `${JMONTHS[jDate.month0]}  ${jDate.day},  ${fy(jDate.year)}`;
+      lines.push(`Month ${jDate.month0+1} of 13 — <span>${isJubileeYear(jDate.year)?'Jubilee year ✦':'standard year'}</span>`);
+    }
+    lines.push(`Gregorian input: <span>${GMONTHS[m0]} ${d}, ${fy(y)}</span>`);
+    lines.push(`Absolute day offset from epoch: <span>${abs>=0?'+':''}${abs.toLocaleString()}</span>`);
+    if(y < 1) lines.push(`<span class="good">BC input:</span> astronomical year ${y} = ${fy(y)}`);
+    if(isGregLeap(y)) lines.push(`<span class="good">Gregorian leap year</span> — February has 29 days`);
+    if(isResetSkipped(jDate.year)) lines.push(`<span class="warn">⚠ 128-year skip</span> — Reset Day omitted in ${fy(jDate.year)}`);
+
+    showResult(`
+      <p class="result-eyebrow">Jubilee Date</p>
+      <p class="result-main ${mainClass}">${mainText}</p>
+      <div class="result-detail">${lines.map(l=>`<div>${l}</div>`).join('')}</div>`);
+
+  } else {
+    const y  = parseInt(document.getElementById('jub-year').value);
+    const m0 = parseInt(document.getElementById('jub-month').value);
+    const d  = parseInt(document.getElementById('jub-day').value);
+    const err = validateJub(y, m0, d);
+    if(err) return showError(err);
+
+    const abs   = jubToAbsolute(y, m0, d);
+    const gDate = absoluteToGreg(abs);
+    const jDOY  = jubDOY(y, m0, d);
+    const gDOY  = gregDOY(gDate.year, gDate.month0, gDate.day);
+
+    lastMath = {
+      dir: 'j2g', abs,
+      inDOY: jDOY,  inTotal: jubYearDays(y),              inYear: y,
+      outDOY: gDOY, outTotal: gregYearDays(gDate.year),   outYear: gDate.year,
+      inLabel:  `${m0===13?'Jubilee':JMONTHS[m0]} ${d}, ${fy(y)}`,
+      outLabel: `${GMONTHS[gDate.month0]} ${gDate.day}, ${fy(gDate.year)}`
+    };
+
+    const lines = [];
+    lines.push(`Jubilee input: <span>${m0===13?'Jubilee':JMONTHS[m0]} ${d}, ${fy(y)}</span>`);
+    lines.push(`Absolute day offset from epoch: <span>${abs>=0?'+':''}${abs.toLocaleString()}</span>`);
+    if(gDate.year < 1) lines.push(`<span class="good">BC result:</span> astronomical year ${gDate.year} = ${fy(gDate.year)}`);
+    if(isGregLeap(gDate.year)) lines.push(`<span class="good">Gregorian leap year</span> — February has 29 days`);
+    if(isJubileeYear(y)) lines.push(`<span>✦ Jubilee Year</span> — includes 7-day Jubilee month`);
+    if(isResetSkipped(y)) lines.push(`<span class="warn">⚠ 128-year skip</span> — Reset Day omitted in ${fy(y)}`);
+
+    showResult(`
+      <p class="result-eyebrow">Gregorian Date</p>
+      <p class="result-main">${GMONTHS[gDate.month0]}  ${gDate.day},  ${fy(gDate.year)}</p>
+      <div class="result-detail">${lines.map(l=>`<div>${l}</div>`).join('')}</div>`);
+  }
+
+  if(mathVisible && lastMath) renderMath(lastMath);
+}
+
+/* ── Render math workings ── */
+function renderMath(m){
+  const isG2J = m.dir === 'g2j';
+  document.getElementById('mathGrid').innerHTML = `
+    <div class="math-cell">Input (${isG2J?'Gregorian':'Jubilee'})<span class="val">${m.inLabel}</span></div>
+    <div class="math-cell">Output (${isG2J?'Jubilee':'Gregorian'})<span class="val">${m.outLabel}</span></div>
+    <div class="math-cell">Input DOY / Year total<span class="val">${m.inDOY} / ${m.inTotal} days</span></div>
+    <div class="math-cell">Output DOY / Year total<span class="val">${m.outDOY} / ${m.outTotal} days</span></div>
+    <div class="math-cell">Absolute day (from epoch)<span class="val">${m.abs>=0?'+':''}${m.abs.toLocaleString()}</span></div>
+    <div class="math-cell">DOY position in year<span class="val">${((m.inDOY/m.inTotal)*100).toFixed(2)}% → ${((m.outDOY/m.outTotal)*100).toFixed(2)}%</span></div>
+  `;
+  document.getElementById('mathSteps').innerHTML = `
+    <strong style="color:var(--ice);letter-spacing:0.1em;font-size:0.6rem;">THREE-STEP EPOCH METHOD</strong><br><br>
+    <strong>Step 1</strong> — Compute absolute day offset from shared epoch (Jan 1, 2000):<br>
+    <code>abs = daysToYearStart(${m.inYear}) + DOY(${m.inDOY}) − 1 = ${m.abs>=0?'+':''}${m.abs.toLocaleString()}</code><br><br>
+    <strong>Step 2</strong> — Walk the output calendar's year boundaries to find which year contains <code>abs</code>:<br>
+    <code>find y such that yearStart(y) ≤ abs &lt; yearStart(y+1)</code><br><br>
+    <strong>Step 3</strong> — Compute DOY within that year, then map to month and day:<br>
+    <code>DOY = abs − yearStart(${m.outYear}) + 1 = ${m.outDOY}  →  ${m.outLabel}</code>
+  `;
+  document.getElementById('epochNoteBox').innerHTML = `
+    <strong>EPOCH &amp; BC RULES</strong><br>
+    Epoch anchor: <code>Jubilee Day 0 = Gregorian January 1, 2000 CE</code><br>
+    BC years use <em>astronomical year numbering</em>: 1 BC = year 0, 2 BC = year −1, etc.<br>
+    Gregorian leap rule (proleptic): <code>y%4==0 &amp;&amp; y%100!=0 || y%400==0</code><br>
+    This rule extends correctly into negative years with no special cases.
+  `;
+}
+
+/* ── UI helpers ── */
+function showResult(html){
+  const b = document.getElementById('resultBox');
+  b.innerHTML = html; b.className = 'result has-result animate-in'; void b.offsetWidth;
+}
+function showError(msg){
+  const b = document.getElementById('resultBox');
+  b.innerHTML = `<p class="result-eyebrow">Validation Error</p><p class="result-main error-text">${msg}</p>`;
+  b.className = 'result error-state animate-in'; void b.offsetWidth;
+}
+function clearResult(){
+  const b = document.getElementById('resultBox');
+  b.innerHTML = '<p class="result-placeholder">Enter a date above and press Convert</p>';
+  b.className = 'result'; lastMath = null;
+  ['mathGrid','mathSteps','epochNoteBox'].forEach(id => document.getElementById(id).innerHTML = '');
+}
+
+/* ── Reference grid ── */
+(function buildRef(){
+  const g = document.getElementById('refGrid');
+  JMONTHS.forEach((n,i)=>{
+    const r = document.createElement('div');
+    r.className = 'ref-row'+(i===13?' jubilee-ref':'');
+    r.innerHTML = `<span>${i+1}. ${JMONTHS_SHORT[i]}</span><span>${i===13?'7 days (Jubilee yrs)':'28 days'}</span>`;
+    g.appendChild(r);
+  });
+  const rr = document.createElement('div');
+  rr.className = 'ref-row';
+  rr.innerHTML = `<span>— Reset Day</span><span>1 day (skip ×128)</span>`;
+  g.appendChild(rr);
+})();
+
+buildFields();
+document.addEventListener('keydown', e => { if(e.key==='Enter') convert(); });
+</script>
+</body>
+</html>

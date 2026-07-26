@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jubilee Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --void: #050608;
+  --deep: #0c0e14;
+  --surface: #111420;
+  --rim: #1e2236;
+  --mist: rgba(255,255,255,0.06);
+  --fog: rgba(255,255,255,0.03);
+  --ink: #e8e4dc;
+  --dim: #7a7a8c;
+  --gold: #c9a84c;
+  --gold-glow: rgba(201,168,76,0.25);
+  --ember: #e05a3a;
+  --ember-glow: rgba(224,90,58,0.3);
+  --ice: #6ec6e6;
+  --ice-glow: rgba(110,198,230,0.25);
+  --jubilee: #b06fe3;
+  --jubilee-glow: rgba(176,111,227,0.3);
+  --serif: 'Cinzel', serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+html, body {
+  min-height: 100vh;
+  background: var(--void);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+/* Starfield canvas behind everything */
+#stars {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  width: min(96vw, 560px);
+  padding: 2.5rem 2rem 2rem;
+  background: linear-gradient(160deg, #13162080 0%, #0b0d1480 100%);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 2px;
+  box-shadow:
+    0 0 90px -42px rgba(110, 62, 28, 0.32),
+    0 0 140px -72px rgba(168, 107, 54, 0.18),
+    0 0 0 1px rgba(255,255,255,0.03) inset,
+    0 40px 80px -20px rgba(0,0,0,0.9),
+    0 0 60px -30px var(--gold-glow);
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  backdrop-filter: blur(24px);
+}
+
+.shell.wide {
+  width: min(96vw, 1200px);
+}
+
+/* Corner ornaments */
+.shell::before, .shell::after {
+  content: '';
+  position: absolute;
+  width: 20px; height: 20px;
+  border-color: var(--gold);
+  border-style: solid;
+  opacity: 0.5;
+}
+.shell::before { top: 10px; left: 10px; border-width: 1px 0 0 1px; }
+.shell::after  { bottom: 10px; right: 10px; border-width: 0 1px 1px 0; }
+
+/* ── HEADER ── */
+.hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2.2rem;
+  gap: 1rem;
+}
+
+.title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.7;
+}
+
+.main-title {
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  cursor: pointer;
+  transition: color 0.2s;
+  line-height: 1;
+}
+.main-title:hover { color: var(--gold); }
+
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  border-radius: 1px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+.btn.arrow {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
+}
+.btn.converter-link {
+  border-color: rgba(110,198,230,0.3);
+  color: var(--ice);
+  opacity: 0.7;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.btn.converter-link:hover {
+  border-color: var(--ice);
+  color: var(--ice);
+  box-shadow: 0 0 12px var(--ice-glow);
+  opacity: 1;
+}
+
+/* ── DIVIDER ── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent);
+  opacity: 0.2;
+  margin-bottom: 1.8rem;
+}
+
+/* ── MONTH VIEW ── */
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 0.8rem;
+}
+
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 300;
+  color: var(--ink);
+  border: 1px solid transparent;
+  border-radius: 1px;
+  cursor: default;
+  position: relative;
+  transition: all 0.15s;
+  background: var(--fog);
+}
+
+.cell:not(.reset-day):hover {
+  background: var(--mist);
+  border-color: rgba(255,255,255,0.12);
+  color: white;
+}
+
+.cell.today-cell {
+  border-color: var(--ice) !important;
+  color: var(--ice) !important;
+  box-shadow: 0 0 14px var(--ice-glow) inset, 0 0 8px var(--ice-glow);
+}
+
+.cell.jubilee-cell {
+  background: rgba(176,111,227,0.08);
+  border-color: rgba(176,111,227,0.3);
+  color: var(--jubilee);
+}
+
+.cell.holiday-cell {
+  color: var(--gold);
+}
+.cell.holiday-cell::after {
+  content: '·';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  line-height: 0;
+  color: var(--gold);
+}
+
+/* tooltip */
+[data-tip] { position: relative; }
+[data-tip]:hover::before {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: #1a1d28;
+  border: 1px solid rgba(201,168,76,0.4);
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.8rem;
+  border-radius: 1px;
+  z-index: 50;
+  pointer-events: none;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+}
+
+.reset-day {
+  grid-column: span 7;
+  aspect-ratio: auto;
+  height: 2.8rem;
+  background: linear-gradient(90deg, rgba(224,90,58,0.12) 0%, rgba(224,90,58,0.22) 50%, rgba(224,90,58,0.12) 100%);
+  border: 1px solid rgba(224,90,58,0.4) !important;
+  color: var(--ember) !important;
+  font-family: var(--serif);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-top: 4px;
+  cursor: default;
+  box-shadow: 0 0 20px rgba(224,90,58,0.1) inset;
+  transition: box-shadow 0.2s;
+}
+.reset-day:hover {
+  box-shadow: 0 0 30px rgba(224,90,58,0.2) inset;
+}
+
+/* ── YEAR VIEW ── */
+.months-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.m-card {
+  background: var(--fog);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 1px;
+  padding: 1.1rem 0.75rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.m-card:hover {
+  background: var(--mist);
+  border-color: rgba(255,255,255,0.18);
+  transform: translateY(-2px);
+}
+.m-card.jubilee-m {
+  border-color: rgba(176,111,227,0.4);
+  background: rgba(176,111,227,0.07);
+}
+.m-card .m-name {
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.m-card .m-sub {
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.m-card.reset-m {
+  background: rgba(224,90,58,0.07);
+  border-color: rgba(224,90,58,0.35);
+}
+.m-card.reset-m .m-name { color: var(--ember); }
+
+/* ── DECADE VIEW ── */
+.years-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.75rem;
+}
+.y-card {
+  background: var(--fog);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 1px;
+  padding: 1.1rem 0.75rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.y-card:hover {
+  background: var(--mist);
+  border-color: rgba(255,255,255,0.18);
+  transform: translateY(-2px);
+}
+.y-card.jubilee-y {
+  border-color: rgba(201,168,76,0.45);
+  box-shadow: 0 0 20px var(--gold-glow);
+}
+.y-card .y-num {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.y-card.jubilee-y .y-num { color: var(--gold); }
+.y-card .y-tag {
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-top: 0.3rem;
+  display: block;
+}
+.y-card.jubilee-y .y-tag { color: var(--gold); opacity: 0.7; }
+.y-card.no-reset .y-tag { color: var(--ember); text-shadow: 0 0 8px var(--ember-glow); }
+
+/* ── LEGEND ── */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 2rem;
+  margin-top: 2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  justify-content: center;
+}
+.leg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.leg-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hidden { display: none !important; }
+
+/* Fade in animation for view switches */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeUp 0.3s ease both; }
+
+/* Orbital ring decoration – top right */
+.orb-ring {
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,76,0.08);
+  pointer-events: none;
+  z-index: 0;
+}
+.orb-ring::before {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,76,0.06);
+}
+.orb-ring::after {
+  content: '';
+  position: absolute;
+  inset: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,76,0.04);
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<div class="shell" id="shell">
+  <div class="orb-ring"></div>
+
+  <div class="hdr">
+    <div class="title-block">
+      <span class="eyebrow">Reformed Calendar System</span>
+      <span class="main-title" id="titleLabel" onclick="zoomOut()">—</span>
+    </div>
+    <div class="controls">
+      <a href="jubilee-converter.html" class="btn converter-link" title="Open Epoch Converter">⇄ Converter</a>
+      <button class="btn arrow" onclick="move(-1)">←</button>
+      <button class="btn" onclick="resetToToday()">Now</button>
+      <button class="btn arrow" onclick="move(1)">→</button>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <!-- Month view -->
+  <div id="monthView">
+    <div class="weekdays">
+      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+    </div>
+    <div id="daysContainer" class="days-grid"></div>
+  </div>
+
+  <!-- Year view -->
+  <div id="yearView" class="months-grid hidden"></div>
+
+  <!-- Decade view -->
+  <div id="decadeView" class="years-grid hidden"></div>
+
+  <div class="legend">
+    <div class="leg"><span class="leg-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold)"></span>Holiday</div>
+    <div class="leg"><span class="leg-dot" style="background:var(--ember)"></span>Reset Day</div>
+    <div class="leg"><span class="leg-dot" style="background:var(--jubilee)"></span>Jubilee Month</div>
+    <div class="leg"><span class="leg-dot" style="background:var(--ice);box-shadow:0 0 6px var(--ice)"></span>Today</div>
+  </div>
+</div>
+
+<script>
+/* ── Starfield ── */
+(function(){
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  let W, H, stars = [];
+  let lastTick = 0;
+  const STRIP_HEIGHT = 1 / 5;
+  const STRIP_OVERLAP = 0.17;
+  const STRIPS = [
+    {
+      count: 42,
+      layers: [
+        { share: 0.28, drift: 0.000005, sway: 0.000006, swayAmp: 0.004, twinkle: 0.004, pulse: 0.55, size: 0.82 },
+        { share: 0.34, drift: 0.00001, sway: 0.00001, swayAmp: 0.008, twinkle: 0.0065, pulse: 0.68, size: 1 },
+        { share: 0.38, drift: 0.000017, sway: 0.000014, swayAmp: 0.012, twinkle: 0.009, pulse: 0.82, size: 1.18 }
+      ]
+    },
+    {
+      count: 48,
+      layers: [
+        { share: 0.28, drift: -0.000007, sway: 0.000007, swayAmp: 0.004, twinkle: 0.0045, pulse: 0.58, size: 0.84 },
+        { share: 0.34, drift: -0.000013, sway: 0.000011, swayAmp: 0.008, twinkle: 0.0068, pulse: 0.72, size: 1 },
+        { share: 0.38, drift: -0.00002, sway: 0.000015, swayAmp: 0.012, twinkle: 0.0095, pulse: 0.86, size: 1.18 }
+      ]
+    },
+    {
+      count: 56,
+      layers: [
+        { share: 0.28, drift: 0.000009, sway: 0.000008, swayAmp: 0.004, twinkle: 0.0048, pulse: 0.6, size: 0.86 },
+        { share: 0.34, drift: 0.000016, sway: 0.000012, swayAmp: 0.008, twinkle: 0.0072, pulse: 0.76, size: 1.02 },
+        { share: 0.38, drift: 0.000025, sway: 0.000017, swayAmp: 0.012, twinkle: 0.0102, pulse: 0.9, size: 1.2 }
+      ]
+    },
+    {
+      count: 42,
+      layers: [
+        { share: 0.28, drift: -0.000006, sway: 0.000006, swayAmp: 0.004, twinkle: 0.0043, pulse: 0.57, size: 0.84 },
+        { share: 0.34, drift: -0.000011, sway: 0.00001, swayAmp: 0.008, twinkle: 0.0066, pulse: 0.7, size: 1 },
+        { share: 0.38, drift: -0.000017, sway: 0.000014, swayAmp: 0.012, twinkle: 0.0091, pulse: 0.84, size: 1.18 }
+      ]
+    },
+    {
+      count: 32,
+      layers: [
+        { share: 0.28, drift: 0.000004, sway: 0.000005, swayAmp: 0.004, twinkle: 0.0038, pulse: 0.5, size: 0.8 },
+        { share: 0.34, drift: 0.000008, sway: 0.000008, swayAmp: 0.008, twinkle: 0.0058, pulse: 0.62, size: 0.96 },
+        { share: 0.38, drift: 0.000013, sway: 0.000012, swayAmp: 0.012, twinkle: 0.0084, pulse: 0.76, size: 1.12 }
+      ]
+    }
+  ];
+  function resize(){ W = c.width = innerWidth; H = c.height = innerHeight; }
+  window.addEventListener('resize', resize); resize();
+  STRIPS.forEach((strip, index) => {
+    const centerY = (index + 0.5) * STRIP_HEIGHT;
+    let assigned = 0;
+    strip.layers.forEach((layer, layerIndex) => {
+      const remaining = strip.count - assigned;
+      const target = layerIndex === strip.layers.length - 1 ? remaining : Math.round(strip.count * layer.share);
+      assigned += target;
+      for(let i = 0; i < target; i++){
+        const spreadY = (Math.random() + Math.random() - 1) * STRIP_OVERLAP;
+        stars.push({
+          x: Math.random(),
+          y: centerY + spreadY,
+          r: (Math.random() * 0.75 + 0.22 + index * 0.03) * layer.size,
+          baseA: Math.random() * 0.2 + 0.08,
+          amp: (Math.random() * 0.18 + 0.05) * layer.pulse,
+          speed: Math.random() * layer.twinkle + layer.twinkle,
+          phase: Math.random() * Math.PI * 2,
+          strip: index,
+          layer: layerIndex,
+          offset: Math.random() * Math.PI * 2,
+          yAmp: 0.002 + Math.random() * 0.006 + layerIndex * 0.0015,
+          ySpeed: 0.00012 + Math.random() * 0.00014,
+          yPhase: Math.random() * Math.PI * 2
+        });
+      }
+    });
+  });
+  function draw(now = 0){
+    const delta = now - lastTick;
+    if(delta < 33){
+      requestAnimationFrame(draw);
+      return;
+    }
+    const step = lastTick ? delta / 16.67 : 1;
+    lastTick = now;
+    ctx.clearRect(0,0,W,H);
+    const layerOffsets = STRIPS.map(strip => strip.layers.map(layer => ({
+      x: now * layer.drift + Math.sin(now * layer.sway) * layer.swayAmp,
+      alpha: layer.pulse,
+      radius: layer.size
+    })));
+    stars.forEach(s=>{
+      const layer = layerOffsets[s.strip][s.layer];
+      s.phase += s.speed * step;
+      const x = (s.x + layer.x + Math.sin(now * 0.0007 + s.offset) * 0.003 + 1.5) % 1;
+      const y = s.y + Math.sin(now * s.ySpeed + s.yPhase) * s.yAmp;
+      const twinkle = (Math.sin(s.phase) + 1) / 2;
+      const alpha = Math.min(0.78, s.baseA + twinkle * s.amp * layer.alpha);
+      const radius = s.r + twinkle * 0.14 * layer.radius;
+      const glowRadius = radius * 2.8;
+      const glowAlpha = alpha * 0.18;
+      ctx.beginPath();
+      ctx.arc(x*W, y*H, glowRadius, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(201,168,76,${glowAlpha})`;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x*W, y*H, radius, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(235,225,255,${alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ── Calendar Logic ── */
+(function(){
+  const MONTHS = ["January","February","March","April","May","June","Sol","July","August","September","October","November","December","Jubilee"];
+  const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Sol","Jul","Aug","Sep","Oct","Nov","Dec","Jubilee"];
+
+  const HOLIDAYS = [
+    {month:0,day:1,name:"New Year's Day"},
+    {month:1,day:14,name:"Valentine's Day"},
+    {month:2,day:8,name:"Women's Day"},
+    {month:2,day:17,name:"St. Patrick's Day"},
+    {month:2,day:20,name:"Spring Equinox"},
+    {month:3,day:1,name:"April Fools'"},
+    {month:3,day:22,name:"Earth Day"},
+    {month:4,day:1,name:"Workers' Day"},
+    {month:5,day:5,name:"Environment Day"},
+    {month:5,day:21,name:"Summer Solstice"},
+    {month:7,day:4,name:"Independence Day"},
+    {month:8,day:15,name:"Assumption Day"},
+    {month:9,day:22,name:"Autumn Equinox"},
+    {month:10,day:24,name:"United Nations Day"},
+    {month:11,day:11,name:"Veterans Day"},
+    {month:12,day:21,name:"Winter Solstice"},
+    {month:12,day:25,name:"Christmas Day"},
+    {month:12,day:26,name:"Boxing Day"},
+    {month:12,day:29,name:"World Reset Day"},
+    {month:13,day:1,name:"Jubilee Festival"},
+    {month:13,day:7,name:"Jubilee Closure"},
+  ];
+  function getHoliday(m,d){ return (HOLIDAYS.find(h=>h.month===m&&h.day===d)||{}).name||null; }
+
+  const isJubileeYear = y => y%28===0;
+  const isResetSkipped = y => y%128===0;
+
+  const gToday = new Date();
+  const todayYear = gToday.getFullYear();
+  const todayMonthIdx = gToday.getMonth()>=6 ? gToday.getMonth()+1 : gToday.getMonth();
+  const todayDay = gToday.getDate() > 28 ? 29 : gToday.getDate();
+
+  let viewMode = 'month';
+  let currentYear = todayYear;
+  let currentMonthIdx = todayMonthIdx;
+  let decadeStart = Math.floor(todayYear/12)*12;
+
+  function fadeIn(el){ el.classList.remove('fade-in'); void el.offsetWidth; el.classList.add('fade-in'); }
+
+  function render(){
+    const shell = document.getElementById('shell');
+    const mv = document.getElementById('monthView');
+    const yv = document.getElementById('yearView');
+    const dv = document.getElementById('decadeView');
+    shell.classList.toggle('wide', viewMode!=='month');
+    mv.classList.toggle('hidden', viewMode!=='month');
+    yv.classList.toggle('hidden', viewMode!=='year');
+    dv.classList.toggle('hidden', viewMode!=='decade');
+    if(viewMode==='month') renderMonth();
+    else if(viewMode==='year') renderYear();
+    else renderDecade();
+  }
+
+  function renderMonth(){
+    const label = document.getElementById('titleLabel');
+    label.textContent = `${MONTHS[currentMonthIdx]}  ${currentYear}`;
+
+    const c = document.getElementById('daysContainer');
+    c.innerHTML='';
+    fadeIn(c);
+
+    const isJub = currentMonthIdx===13;
+    const limit = isJub ? 7 : 28;
+    const showReset = currentMonthIdx===12 && !isResetSkipped(currentYear);
+
+    for(let d=1;d<=limit;d++){
+      const cell = document.createElement('div');
+      cell.className='cell';
+      if(isJub) cell.classList.add('jubilee-cell');
+
+      const isToday = currentYear===todayYear && currentMonthIdx===todayMonthIdx && d===todayDay;
+      if(isToday) cell.classList.add('today-cell');
+
+      const h = getHoliday(currentMonthIdx,d);
+      if(h){ cell.classList.add('holiday-cell'); cell.setAttribute('data-tip',h); }
+
+      cell.textContent = String(d).padStart(2,'0');
+      c.appendChild(cell);
+    }
+
+    if(showReset){
+      const r = document.createElement('div');
+      r.className='cell reset-day';
+      r.textContent='✦  World Reset Day  ✦';
+      const h = getHoliday(12,29);
+      if(h) r.setAttribute('data-tip',h);
+      c.appendChild(r);
+    }
+  }
+
+  function renderYear(){
+    const label = document.getElementById('titleLabel');
+    label.textContent = String(currentYear);
+    const c = document.getElementById('yearView');
+    c.innerHTML=''; fadeIn(c);
+
+    const count = isJubileeYear(currentYear) ? 14 : 13;
+    for(let i=0;i<count;i++){
+      const card = document.createElement('div');
+      card.className='m-card'+(i===13?' jubilee-m':'');
+      card.innerHTML=`<span class="m-name">${MONTHS_SHORT[i]}</span><span class="m-sub">${i===13?'7 days':'28 days'}</span>`;
+      card.onclick=()=>{ currentMonthIdx=i; viewMode='month'; render(); };
+      c.appendChild(card);
+    }
+    if(!isResetSkipped(currentYear)){
+      const r=document.createElement('div');
+      r.className='m-card reset-m';
+      r.innerHTML=`<span class="m-name">Reset</span><span class="m-sub">1 day</span>`;
+      r.onclick=()=>{ currentMonthIdx=12; viewMode='month'; render(); };
+      c.appendChild(r);
+    }
+  }
+
+  function renderDecade(){
+    const label = document.getElementById('titleLabel');
+    label.textContent=`${decadeStart} – ${decadeStart+11}`;
+    const c=document.getElementById('decadeView');
+    c.innerHTML=''; fadeIn(c);
+
+    for(let y=decadeStart;y<decadeStart+12;y++){
+      const card=document.createElement('div');
+      card.className='y-card'+(isJubileeYear(y)?' jubilee-y':'');
+      const tag = isJubileeYear(y)?'Jubilee Year': isResetSkipped(y)?'No Reset':'Standard';
+      if(isResetSkipped(y)) card.classList.add('no-reset');
+      card.innerHTML=`<div class="y-num">${y}</div><span class="y-tag">${tag}</span>`;
+      card.onclick=()=>{ currentYear=y; viewMode='year'; render(); };
+      c.appendChild(card);
+    }
+  }
+
+  window.zoomOut = function(){
+    if(viewMode==='month'){ viewMode='year'; }
+    else if(viewMode==='year'){ viewMode='decade'; decadeStart=Math.floor(currentYear/12)*12; }
+    else { viewMode='month'; }
+    render();
+  };
+  window.move = function(d){
+    if(viewMode==='month'){
+      currentMonthIdx+=d;
+      const max=isJubileeYear(currentYear)?13:12;
+      if(currentMonthIdx>max){ currentMonthIdx=0; currentYear++; }
+      else if(currentMonthIdx<0){ currentYear--; currentMonthIdx=isJubileeYear(currentYear)?13:12; }
+    } else if(viewMode==='year'){ currentYear+=d; }
+    else { decadeStart+=d*12; }
+    render();
+  };
+  window.resetToToday = function(){
+    currentYear=todayYear; currentMonthIdx=todayMonthIdx; viewMode='month'; render();
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
