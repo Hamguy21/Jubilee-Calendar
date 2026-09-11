@@ -1,7 +1,7 @@
 # 📅 Jubilee Calendar
 
 > A reformed calendar system with 13 equal months, a dedicated intercalary month, and year-cycle rules anchored to Year 0.
-<img width="720" height="720" alt="image" src="https://github.com/user-attachments/assets/390156d7-f5aa-4183-94b1-e2ddb84b2594" />
+<img width="512" height="512" alt="jub" src="https://github.com/user-attachments/assets/5a4ef4af-966a-4a7e-8550-d638eeed01be" />
 
 ---
 
